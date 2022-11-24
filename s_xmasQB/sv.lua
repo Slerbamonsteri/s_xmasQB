@@ -1,107 +1,52 @@
 local ClaimedTrees = {}
-local ClaimedNames = {}
+local UsersClaim = {}
 local QBCore = exports['qb-core']:GetCoreObject()
 
+CreateThread(function()
+	for k,v in pairs(Config.Trees) do
+		ClaimedTrees[k] = 0
+	end
+end)
 
 --Prepare your eyes. This is one nasty payout event kekw. Hope you know how to read code
-
+-- Cleaned up with <3 by Baytona :)
 --I wouldve used netid's but creating trees locally for players gives out different netids thus i decided to go for tree coords for the checks.
-RegisterServerEvent('s_xmas:claim', function(treecoords, sourcecoords)
-	local xPlayer = QBCore.Functions.GetPlayer(source)
-	local name = GetPlayerName(source) --I think you could change this to like xPlayer.identifier or something for even better security against reconnecting and reclaiming.
-	local raredrop = math.random(1, 100) --Change this to your liking
-	local randomizeLoot = math.random(1, #Config.LootTable) --Editing first number will increase given items from the loot table, defaulted as 1 per gift
-	local randomizeRareLoot = math.random(1, #Config.RareLootTable)
-	if ClaimedTrees[treecoords] ~= nil then 
-		if ClaimedTrees[treecoords].looted <= Config.maxGifts then --Checking that the tree still has gifts
+RegisterServerEvent('s_xmas:claim', function(index)
+	local Player = QBCore.Functions.GetPlayer(source)
+	if ClaimedTrees[index].looted >= Config.maxGifts then return TriggerClientEvent('QBCore:Notify', src, "This tree is out of gifts :(") end
+	if UsersClaim[Player.PlayerData.citizenid][index] then return TriggerClientEvent('QBCore:Notify', src, "You have already claimed your gift!") end
 
-			--With this loop we will be checking every steam name that has claimed the tree, and then decide if player is eligible for reward!
-			for k,v in pairs(ClaimedNames[treecoords]) do
-				if v == name then
-					--xPlayer.showNotification('You claimed this already!')
-					return
-				end
-			end
+	local rareChance = math.random()
 
-			table.insert(ClaimedNames[treecoords], name)
-			if raredrop >= 1 and raredrop <= 20 then --Editing these values you can increase / decrease chances of player rolling to raredrop table currently around 1:5 chance to roll it.
-				for k,v in pairs(Config.RareLootTable[randomizeRareLoot]) do
-					if v.itemtype == 'item' then
-						xPlayer.Functions.AddItem(v.item, v.amount)
-						TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], 'add')
-						--Add notif
-						--Log your stuff here
-					elseif v.itemtype == 'money' then
-						xPlayer.Functions.AddMoney(v.amount)
-						--xPlayer.showNotification('You hit the raredroptable and got: '..(v.amount).. '$ -Happy holidays!')
-						--Log your stuff here
-					elseif v.itemtype == 'weapon' then
-						xPlayer.Functions.AddItem(v.item, v.amount)
-						--xPlayer.showNotification('You hit the raredroptable and got: '..(v.item).. ' -Happy holidays!')
-						--Log your stuff here
-					end
-				end
-			else --Didnt land on raredrop, lets give default loot!
-				for k,v in pairs(Config.LootTable[randomizeLoot]) do
-					if v.itemtype == 'item' then
-						xPlayer.Functions.AddItem(v.item, v.amount)
-						--xPlayer.showNotification('You hit the raredroptable and got: '..(v.item).. ' -Happy holidays!')
-						--Log your stuff here
-					elseif v.itemtype == 'money' then
-						xPlayer.Functions.AddMoney(v.amount)
-						--xPlayer.showNotification('You hit the raredroptable and got: '..(v.amount).. '$ -Happy holidays!')
-						--Log your stuff here
-					elseif v.itemtype == 'weapon' then
-						xPlayer.Functions.AddItem(v.item, v.amount)
-						--xPlayer.showNotification('You hit the raredroptable and got: '..(v.item).. ' -Happy holidays!')
-						--Log your stuff here
-					end
-				end
-			end
+	if rareChance < 0.2 then
+		local winnings = Config.RareLootTable[math.random(#Config.RareLootTable)]
+		TriggerClientEvent('QBCore:Notify', source, 'You got a rare gift!')
+		if winnings.itemtype == "money" then
+			Player.Functions.AddMoney('cash', winnings.amount)
+			TriggerClientEvent('QBCore:Notify', source, 'Your gift was $'..winnings.amount..'!')
 		else
-			xPlayer.showNotification('This tree has no more gifts!')
-		end
-	else -- Only using this to create tables for trees.
-		ClaimedTrees[treecoords] = {}
-		ClaimedNames[treecoords] = {}
-		ClaimedTrees[treecoords].looted = 1
-		table.insert(ClaimedNames[treecoords], name) --Adding steam name to the table for later checking!
-		if raredrop >= 1 and raredrop <= 20 then --Editing these values you can increase / decrease chances of player rolling to raredrop table currently around 1:5 chance to roll it.
-			for k,v in pairs(Config.RareLootTable[randomizeRareLoot]) do
-				if v.itemtype == 'item' then
-					xPlayer.Functions.AddItem(v.item, v.amount)
-					--xPlayer.showNotification('You hit the raredroptable and got: '..(v.item).. ' -Happy holidays!')
-					--Log your stuff here
-				elseif v.itemtype == 'money' then
-					xPlayer.Functions.AddMoney(v.amount)
-					--xPlayer.showNotification('You hit the raredroptable and got: '..(v.amount).. '$ -Happy holidays!')
-					--Log your stuff here
-				elseif v.itemtype == 'weapon' then
-					xPlayer.Functions.AddItem(v.item, v.amount)
-					--xPlayer.showNotification('You hit the raredroptable and got: '..(v.item).. ' -Happy holidays!')
-					--Log your stuff here
-				end
+			if Player.Functions.AddItem(winnings.item, winnings.amount) then
+				local itemLabel = QBCore.Shared.Items[winnings.item].label
+				TriggerClientEvent('QBCore:Notify', source, 'Your gift was a '..itemLabel..'!')
+				UsersClaim[Player.PlayerData.citizenid][index] = true
+				ClaimedTrees[index] = ClaimedTrees[index] + 1
 			end
-		else --Default loottable below
-			for k,v in pairs(Config.LootTable[randomizeLoot]) do
-				print(v.itemtype)
-				if v.itemtype == 'item' then
-					xPlayer.Functions.AddItem(v.item, v.amount)
-					--xPlayer.showNotification('You hit the raredroptable and got: '..(v.item).. ' -Happy holidays!')
-					--Log your stuff here
-				elseif v.itemtype == 'money' then
-					xPlayer.Functions.AddMoney(v.amount)
-					--xPlayer.showNotification('You hit the raredroptable and got: '..(v.amount).. '$ -Happy holidays!')
-					--Log your stuff here
-				elseif v.itemtype == 'weapon' then
-					xPlayer.Functions.AddItem(v.item, v.amount)
-					--xPlayer.showNotification('You hit the raredroptable and got: '..(v.item).. ' -Happy holidays!')
-					--Log your stuff here
-				end
+		end
+	else
+		local winnings = Config.RareLootTable[math.random(#Config.LootTable)]
+		TriggerClientEvent('QBCore:Notify', source, 'Not so lucky, you got a normal gift.')
+		if winnings.itemtype == "money" then
+			Player.Functions.AddMoney('cash', winnings.amount)
+			TriggerClientEvent('QBCore:Notify', source, 'Your gift was $'..winnings.amount..'!')
+		else
+			if Player.Functions.AddItem(winnings.item, winnings.amount) then
+				local itemLabel = QBCore.Shared.Items[winnings.item].label
+				TriggerClientEvent('QBCore:Notify', source, 'Your gift was a '..itemLabel..'!')
+				UsersClaim[Player.PlayerData.citizenid][index] = true
+				ClaimedTrees[index] = ClaimedTrees[index] + 1
 			end
 		end
 	end
-
 end)
 
 --Feel free to use these, I added these for my own debugging but with these you can easily Clear every ped, vehicle and prop known to server.

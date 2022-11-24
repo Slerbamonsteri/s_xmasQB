@@ -9,8 +9,14 @@ Config.BlipName = 'Christmas Presents'
 
 --Setup as many trees as you want
 Config.Trees = {
-  {pos = vector3(242.05, -879.18, 30.49)},
-  {pos = vector3(233.09, -875.96, 30.49)},
+  {
+    pos = vector3(242.05, -879.18, 30.49),
+    tree = nil
+  },
+  {
+    pos = vector3(233.09, -875.96, 30.49),
+    tree = nil
+  },
 }
 
 
