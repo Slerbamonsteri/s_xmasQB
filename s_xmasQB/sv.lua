@@ -13,7 +13,7 @@ end)
 --I wouldve used netid's but creating trees locally for players gives out different netids thus i decided to go for tree coords for the checks.
 RegisterServerEvent('s_xmas:claim', function(index)
 	local Player = QBCore.Functions.GetPlayer(source)
-	if ClaimedTrees[index].looted >= Config.maxGifts then return TriggerClientEvent('QBCore:Notify', src, "This tree is out of gifts :(") end
+	if ClaimedTrees[index] >= Config.maxGifts then return TriggerClientEvent('QBCore:Notify', src, "This tree is out of gifts :(") end
 	if UsersClaim[Player.PlayerData.citizenid][index] then return TriggerClientEvent('QBCore:Notify', src, "You have already claimed your gift!") end
 
 	local rareChance = math.random()
