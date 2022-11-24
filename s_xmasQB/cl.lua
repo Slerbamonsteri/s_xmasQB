@@ -1,25 +1,58 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 local spawned = false
 local spawnedTrees = {}
-
+local claimed = false
 
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
-  Wait(10000) --Lets wait until player has really loaded in
-  TriggerEvent('s_xmas:CreateTree')
+	createTrees()
 end)
 
+RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+	deleteTrees()
+end)
 
-RegisterNetEvent('s_xmas:CreateTree', function()
+local function DrawStuff()
+	if not spawned then return end
+	while spawned do
+		local sleep = 500
+		for k,v in pairs(Config.Trees) do
+			local ped = PlayerPedId()
+			local dist = #(GetEntityCoords(ped) - GetEntityCoords(v.tree))
+			if dist < 3 then
+				sleep = 0
+				DrawText3D(GetEntityCoords(v.tree) + vector3(0.0, 0.0, 0.0+1.4), 'Claim your present! [~g~E~s~]', 0.3)
+				if IsControlJustReleased(0,38) and not claimed then --Change key to what u want
+					claimed = true
+					TriggerServerEvent('s_xmas:claim', k)
+					Wait(1000)
+					claimed = false
+				end
+			end
+		end
+		Wait(sleep)
+	end
+end
+
+function deleteTrees()
+	if not spawned then return end
+	for k,v in pairs(Config.Trees) do
+		if v.tree then
+			DeleteEntity(v.tree)
+		end
+	end
+	spawned = false
+end
+
+function createTrees()
+	if spawned then return end
 	local tree = 'prop_xmas_tree_int' --Prop used for trees
 	RequestModel(tree)
-	while (not HasModelLoaded(tree)) do Wait(10) end
+
 	for k,v in pairs(Config.Trees) do
-		trees = CreateObject(tree, v.pos, false, false, false)
+		Config.Trees[k].tree = CreateObject(tree, v.pos, false, false, false)
 		Wait(200)
 		if DoesEntityExist(trees) then 
 			PlaceObjectOnGroundProperly(trees)
-			table.insert(spawnedTrees, trees)
-			spawned = true
 			DrawStuff()
 		end
 	end
@@ -38,37 +71,17 @@ RegisterNetEvent('s_xmas:CreateTree', function()
 			end
 		end)
 	end
-end)
 
-function DrawStuff()
-	CreateThread(function()
-		local plyped = PlayerPedId()
-		Wait(1000)
-		while spawned do
-			sleep = 1000
-			local treeObj, distance = QBCore.Functions.GetClosestObject(GetEntityCoords(PlayerPedId())
-			--local closestTree, distance = ESX.Game.GetClosestObject('prop_xmas_tree_int')
-			if distance <= 2.3 and treeObj == `prop_xmas_tree_int` then
-				sleep = 1
-				DrawText3D(GetEntityCoords(closestTree) + vector3(0.0, 0.0, 0.0+1.4), 'Claim your present! [~g~E~s~]', 0.3)
-				if IsControlJustReleased(0,38) and not claimed then --Change key to what u want
-					claimed = true
-					TriggerServerEvent('s_xmas:claim', GetEntityCoords(closestTree), GetEntityCoords(plyped))
-					Wait(1000) --Added wait to prevent spamming.
-					claimed = false
-				end
-			end
-			Wait(sleep)
-		end
-	end)
+	spawned = true
 end
 
 AddEventHandler('onResourceStop', function(resource) --self explanatory
 	if resource == GetCurrentResourceName() then
-		for k,v in pairs(spawnedTrees) do
-			DeleteEntity(v)
-			spawnedTrees = {}
-			spawned = false
+		for k,v in pairs(Config.Trees) do
+			if v.tree then
+				DeleteEntity(v)
+				spawned = false
+			end
 		end
 	end
 end)
@@ -86,5 +99,4 @@ function DrawText3D(coords, text, scale)
     AddTextComponentString(text)
     DrawText(_x, _y)  
     local factor = (string.len(text)) / 270
-    --DrawRect(_x, _y + 0.015, 0.005 + factor, 0.03, 31, 31, 31, 155)
 end
